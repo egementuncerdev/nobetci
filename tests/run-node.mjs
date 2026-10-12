@@ -3,6 +3,7 @@ import { run } from './harness.js';
 import './calc.test.js';
 import './storage.test.js';
 import './planner.test.js';
+import './ics.test.js';
 
 const results = await run();
 for (const r of results) console.log(`${r.pass ? '✓' : '✗'} ${r.name}${r.pass ? '' : `\n    ${r.error}`}`);

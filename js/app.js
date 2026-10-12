@@ -9,6 +9,8 @@ import {
 } from './calc.js';
 import * as store from './storage.js';
 import { dayLayout, plan, fits, freeMinutes } from './planner.js';
+import { buildICS, weekEvents } from './ics.js';
+import { drawWeekCard } from './share.js';
 import {
   t, setLang, getLang, applyStatic, fmtDuration, fmtHours, fmtMoney, fmtDayMonth, fmtMonthYear, fmtWeekRange
 } from './i18n.js';
@@ -754,6 +756,51 @@ function goalForm(goal) {
 }
 
 /* ==========================================================================
+   DIŞA AKTARMA: takvim (.ics) ve görsel (.png)
+   ========================================================================== */
+
+function exportICS() {
+  const dates = weekDates(view.week);
+  const events = weekEvents(dates, tplFor, state.sessions, goalById(), { plan: t('ics.goal') });
+  const ics = buildICS(events, { calName: `Nöbetçi — ${fmtWeekRange(dates[0], dates[6])}` });
+  download(`nobetci-${dates[0]}.ics`, ics, 'text/calendar;charset=utf-8');
+  toast(t('toast.downloaded'));
+}
+
+function exportPNG() {
+  const dates = weekDates(view.week);
+  const sum = weekSummary(view.week, tplFor, state.settings);
+  const canvas = drawWeekCard({
+    title: t('share.title'),
+    range: fmtWeekRange(dates[0], dates[6]),
+    rows: sum.days.map((d) => {
+      const tpl = tplFor(d.date);
+      return {
+        day: dayName(d.date, 'short'),
+        date: fmtDayMonth(d.date),
+        name: tpl ? tpl.name : t('week.empty'),
+        time: tpl && !tpl.off ? timeRange(tpl) : '',
+        color: tpl?.color || '#8a9099',
+        empty: !tpl,
+        hours: d.net ? fmtHours(d.net) : '',
+        overtime: d.overtime ? `+${fmtHours(d.overtime)}` : ''
+      };
+    }),
+    totals: [
+      { label: t('sum.net'), value: fmtHours(sum.net) },
+      { label: t('sum.overtime'), value: fmtHours(sum.overtime), alert: sum.overtime > 0 },
+      { label: t('sum.night'), value: fmtHours(sum.night) }
+    ],
+    footer: t('share.footer')
+  });
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    download(`nobetci-hafta-${dates[0]}.png`, blob);
+    toast(t('toast.downloaded'));
+  }, 'image/png');
+}
+
+/* ==========================================================================
    GENEL
    ========================================================================== */
 
@@ -871,10 +918,8 @@ document.addEventListener('click', async (e) => {
       toast(t('toast.reset'));
       break;
 
-    case 'export-ics':
-    case 'export-png':
-      // 4. aşamada bağlanacak
-      break;
+    case 'export-ics': exportICS(); break;
+    case 'export-png': exportPNG(); break;
     default: break;
   }
 });
@@ -895,6 +940,11 @@ $('#theme-btn').addEventListener('click', () => {
 });
 
 /* ---------- Başlat ---------- */
+
+/* ---------- Çevrimdışı (PWA) ---------- */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
 
 setLang(state.settings.lang);
 applyTheme();
