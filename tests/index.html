@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Nöbetçi — Testler</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 16px; color: #14161a; background: #f6f7f9; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sum { font-weight: 600; margin: 0 0 16px; }
+    .sum.fail { color: #c92a2a; }
+    .sum.pass { color: #2b8a3e; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 10px 12px; border-radius: 8px; background: #fff; margin-bottom: 6px; border-left: 4px solid #2b8a3e; }
+    li.fail { border-color: #c92a2a; }
+    li small { display: block; color: #c92a2a; font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Nöbetçi — Testler</h1>
+  <p class="sum" id="sum">Çalışıyor…</p>
+  <ul id="list"></ul>
+  <script type="module">
+    import { run } from './harness.js';
+    import './calc.test.js';
+    import './storage.test.js';
+    import './planner.test.js';
+
+    const results = await run();
+    const failed = results.filter((r) => !r.pass);
+    const sum = document.getElementById('sum');
+    sum.textContent = failed.length
+      ? `${failed.length} / ${results.length} test başarısız`
+      : `${results.length} testin hepsi geçti ✓`;
+    sum.className = `sum ${failed.length ? 'fail' : 'pass'}`;
+    document.getElementById('list').append(...results.map((r) => {
+      const li = document.createElement('li');
+      li.className = r.pass ? 'pass' : 'fail';
+      li.textContent = `${r.pass ? '✓' : '✗'} ${r.name}`;
+      if (!r.pass) {
+        const small = document.createElement('small');
+        small.textContent = r.error;
+        li.append(small);
+      }
+      return li;
+    }));
+  </script>
+</body>
+</html>

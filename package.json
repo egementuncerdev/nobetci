@@ -1,0 +1,9 @@
+{
+  "name": "nobetci",
+  "private": true,
+  "type": "module",
+  "description": "Vardiya & mesai planlayıcı — saf HTML/CSS/JS, build adımı yok",
+  "scripts": {
+    "test": "node tests/run-node.mjs"
+  }
+}
