@@ -4,10 +4,11 @@
    ========================================================================== */
 
 import {
-  weekDates, addDays, todayISO, toMin, grossMinutes, netMinutes, weekSummary, monthSummary,
+  weekDates, addDays, todayISO, toMin, toHHMM, grossMinutes, netMinutes, weekSummary, monthSummary,
   shiftInterval, startOfWeek, DAY
 } from './calc.js';
 import * as store from './storage.js';
+import { dayLayout, plan, fits, freeMinutes } from './planner.js';
 import {
   t, setLang, getLang, applyStatic, fmtDuration, fmtHours, fmtMoney, fmtDayMonth, fmtMonthYear, fmtWeekRange
 } from './i18n.js';
@@ -18,11 +19,13 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const today = todayISO();
 
 let state = store.load();
+let firstRunPlan = false;
 let storageOk = true;
 if (!state) {
   const lang = (navigator.language || 'tr').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   state = store.demoState(lang, today);
   storageOk = store.save(state);
+  firstRunPlan = true;
 }
 
 const view = {
@@ -407,11 +410,347 @@ function templateForm(tpl) {
 }
 
 /* ==========================================================================
-   BOŞ ZAMAN (3. aşamada doldurulacak)
+   BOŞ ZAMAN
    ========================================================================== */
 
-function renderFree() {
-  $('#free-root').innerHTML = '';
+const intervalFor = (date) => shiftInterval(date, tplFor(date));
+const goalById = () => new Map(state.goals.map((g) => [g.id, g]));
+const pct = (min) => `${(min / DAY) * 100}%`;
+
+/** Bir günün çizime hazır parçaları (gün içi dakika) */
+function dayParts(date) {
+  const layout = dayLayout(date, intervalFor, state.settings);
+  const base = layout.window.start;
+  const shiftTpl = (start) => {
+    // Bu dakika hangi günün vardiyasına ait?
+    for (const k of [0, -1, 1]) {
+      const d = addDays(date, k);
+      const iv = intervalFor(d);
+      if (iv && start >= iv.start && start < iv.end) return tplFor(d);
+    }
+    return null;
+  };
+  const blocks = layout.blocks.map((b) => {
+    const tpl = b.type === 'shift' ? shiftTpl(b.start) : null;
+    return {
+      type: b.type, start: b.start - base, end: b.end - base,
+      color: tpl?.color || null,
+      label: tpl ? `${tpl.name} ${tpl.start}–${tpl.end}` : null
+    };
+  });
+  const free = layout.free.map((f) => ({ start: f.start - base, end: f.end - base }));
+  return { layout, blocks, free, sessions: state.sessions[date] || [] };
+}
+
+function weekNavHTML() {
+  const dates = weekDates(view.week);
+  return `
+    <div class="weeknav weeknav--compact">
+      <button class="icon-btn icon-btn--lg" type="button" data-action="week-prev" aria-label="${esc(t('week.prev'))}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="weeknav__title"><h3>${esc(fmtWeekRange(dates[0], dates[6]))}</h3></div>
+      <button class="icon-btn icon-btn--lg" type="button" data-action="week-next" aria-label="${esc(t('week.next'))}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>`;
+}
+
+function renderFree({ animate = false } = {}) {
+  const s = state.settings;
+  const dates = weekDates(view.week);
+  if (!dates.includes(view.freeDay)) view.freeDay = dates.includes(today) ? today : dates[0];
+  const goals = goalById();
+  const parts = Object.fromEntries(dates.map((d) => [d, dayParts(d)]));
+  const weekFree = dates.reduce((sum, d) => sum + freeMinutes(parts[d].layout), 0);
+
+  const legend = `
+    <ul class="legend" aria-hidden="true">
+      <li><i class="k-shift"></i>${esc(t('free.legend.shift'))}</li>
+      <li><i class="k-buffer"></i>${esc(t('free.legend.buffer'))}</li>
+      <li><i class="k-sleep"></i>${esc(t('free.legend.sleep'))}</li>
+      <li><i class="k-free"></i>${esc(t('free.legend.free'))}</li>
+      <li><i class="k-session"></i>${esc(t('free.legend.session'))}</li>
+    </ul>`;
+
+  const segs = (p) => [
+    ...p.free.map((f) => `<i class="seg seg--free" style="left:${pct(f.start)};width:${pct(f.end - f.start)}"></i>`),
+    ...p.blocks.map((b) => `<i class="seg seg--${b.type}" style="left:${pct(b.start)};width:${pct(b.end - b.start)}${b.color ? `;--c:${b.color}` : ''}"></i>`),
+    ...p.sessions.map((x) => `<i class="seg seg--session" style="left:${pct(x.start)};width:${pct(x.duration)};--c:${goals.get(x.goalId)?.color || '#16a37f'}"></i>`)
+  ].join('');
+
+  const overview = dates.map((d) => {
+    const p = parts[d];
+    const freeTxt = t('free.dayFree', { v: fmtHours(freeMinutes(p.layout)) });
+    return `
+      <li><button type="button" class="fday ${d === view.freeDay ? 'is-active' : ''} ${d === today ? 'is-today' : ''}" data-action="free-day" data-date="${d}"
+        aria-pressed="${d === view.freeDay}" aria-label="${esc(`${dayName(d)} ${fmtDayMonth(d)}: ${freeTxt}`)}">
+        <span class="fday__label"><b>${esc(dayName(d, 'short'))}</b> ${esc(fmtDayMonth(d))}</span>
+        <span class="fday__free">${esc(freeTxt)}</span>
+        <span class="fbar" aria-hidden="true">${segs(p)}</span>
+      </button></li>`;
+  }).join('');
+
+  const goalsList = state.goals.map((g) => `
+    <li><button class="list__item" type="button" data-action="edit-goal" data-id="${esc(g.id)}">
+      <i class="dot" style="--c:${g.color}"></i>
+      <span class="list__main"><b>${esc(g.name)}</b>
+        <small>${esc(t('free.goalLine', { h: fmtHours(g.weeklyHours * 60), min: g.minSession, max: g.maxSession }))}</small></span>
+      ${chevron}
+    </button></li>`).join('');
+
+  const hasPlan = dates.some((d) => (state.sessions[d] || []).length);
+  const result = view.planResult;
+  const resultHTML = result ? `
+    <div class="plan-result ${result.unplaced.length ? 'plan-result--warn' : 'plan-result--ok'}" role="status">
+      <p>${esc(t('free.planned', { n: result.count }))}</p>
+      ${result.unplaced.length
+        ? result.unplaced.map((u) => `<p><strong>${esc(t('free.unplaced', { v: fmtDuration(u.minutes), goal: goals.get(u.goalId)?.name || '' }))}</strong></p>`).join('')
+        : `<p>${esc(t('free.allFit'))}</p>`}
+    </div>` : '';
+
+  $('#free-root').innerHTML = `
+    ${weekNavHTML()}
+
+    <form class="card stack" id="free-form" novalidate>
+      <div class="grid-2">
+        <div class="field"><label for="f-ss">${esc(t('free.sleepStart'))}</label><input class="input" id="f-ss" name="sleepStart" type="time" value="${s.sleep.start}"></div>
+        <div class="field"><label for="f-se">${esc(t('free.sleepEnd'))}</label><input class="input" id="f-se" name="sleepEnd" type="time" value="${s.sleep.end}"></div>
+      </div>
+      <div class="field">
+        <label for="f-buf">${esc(t('free.buffer'))}</label>
+        <input class="input" id="f-buf" name="buffer" type="number" inputmode="numeric" min="0" max="240" step="5" value="${s.buffer}">
+        <small>${esc(t('free.bufferHint'))}</small>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="card__row"><h3 class="card__title">${esc(t('free.weekFree'))}</h3><span class="card__big">${esc(fmtHours(weekFree))}</span></div>
+      ${legend}
+      <ol class="fdays">${overview}</ol>
+    </div>
+
+    <div class="card">
+      <h3 class="card__title">${esc(t('free.goals'))}</h3>
+      ${state.goals.length ? `<ul class="list">${goalsList}</ul>` : `<p class="hint">${esc(t('free.noGoals'))}</p>`}
+      <button class="btn btn--block btn--ghost" type="button" data-action="new-goal">+ ${esc(t('free.addGoal'))}</button>
+      <div class="plan-actions">
+        <button class="btn btn--primary btn--block" type="button" data-action="plan" ${state.goals.length ? '' : 'disabled'}>✦ ${esc(t(hasPlan ? 'free.replan' : 'free.plan'))}</button>
+        ${hasPlan ? `<button class="btn btn--ghost" type="button" data-action="clear-plan">${esc(t('free.clearPlan'))}</button>` : ''}
+      </div>
+      ${resultHTML}
+    </div>
+
+    <div class="card" id="day-detail"></div>`;
+
+  renderDayDetail(parts[view.freeDay]);
+
+  $('#free-form').addEventListener('change', (e) => {
+    const f = e.currentTarget.elements;
+    commit((st) => {
+      if (f.sleepStart.value) st.settings.sleep.start = f.sleepStart.value;
+      if (f.sleepEnd.value) st.settings.sleep.end = f.sleepEnd.value;
+      st.settings.buffer = Math.max(0, Math.min(240, +f.buffer.value || 0));
+    });
+  });
+
+  if (animate && gsapOk()) {
+    window.gsap.from('.fbar .seg--session, .tl__session', { scaleX: 0, opacity: 0, transformOrigin: 'left center', duration: 0.45, stagger: 0.03, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }
+}
+
+/** Seçili günün dikey zaman çizelgesi */
+function renderDayDetail(p) {
+  const date = view.freeDay;
+  const goals = goalById();
+  const hours = Array.from({ length: 25 }, (_, h) => `<span class="tl__hour" style="top:calc(${h} * var(--hour))">${String(h % 24).padStart(2, '0')}:00</span>`).join('');
+  const top = (m) => `calc(${m / 60} * var(--hour))`;
+  const blocks = [
+    ...p.free.map((f) => `<i class="tl__block tl__block--free" style="top:${top(f.start)};height:${top(f.end - f.start)}"></i>`),
+    ...p.blocks.map((b) => `<i class="tl__block tl__block--${b.type}" style="top:${top(b.start)};height:${top(b.end - b.start)}${b.color ? `;--c:${b.color}` : ''}">${b.end - b.start >= 45 ? `<span>${esc(b.label || `${t(`free.legend.${b.type}`)} ${toHHMM(b.start)}–${toHHMM(b.end)}`)}</span>` : ''}</i>`)
+  ].join('');
+  const sessions = p.sessions.map((x, i) => {
+    const g = goals.get(x.goalId);
+    const range = `${toHHMM(x.start)}–${toHHMM(x.start + x.duration)}`;
+    return `<button type="button" class="tl__session" data-index="${i}" data-id="${esc(x.id)}" style="top:${top(x.start)};height:${top(x.duration)};--c:${g?.color || '#16a37f'}"
+      aria-label="${esc(t('free.sessionAria', { goal: g?.name || '', start: toHHMM(x.start), end: toHHMM(x.start + x.duration) }))}">
+      <b>${esc(g?.name || '')}</b><span>${range}</span></button>`;
+  }).join('');
+
+  const list = p.sessions.map((x, i) => {
+    const g = goals.get(x.goalId);
+    return `<li class="srow">
+      <i class="dot" style="--c:${g?.color || '#16a37f'}"></i>
+      <span class="srow__main"><b>${esc(g?.name || '')}</b><small>${toHHMM(x.start)}–${toHHMM(x.start + x.duration)} · ${esc(fmtDuration(x.duration))}</small></span>
+      <button class="icon-btn" type="button" data-action="session-move" data-index="${i}" data-delta="-15" aria-label="${esc(t('free.moveEarlier'))}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button class="icon-btn" type="button" data-action="session-move" data-index="${i}" data-delta="15" aria-label="${esc(t('free.moveLater'))}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="icon-btn" type="button" data-action="session-remove" data-index="${i}" aria-label="${esc(t('free.remove'))}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </li>`;
+  }).join('');
+
+  $('#day-detail').innerHTML = `
+    <div class="card__row">
+      <h3 class="card__title">${esc(`${dayName(date)}, ${fmtDayMonth(date)}`)}</h3>
+      <span class="card__muted">${esc(t('free.dayFree', { v: fmtHours(freeMinutes(p.layout)) }))}</span>
+    </div>
+    ${p.sessions.length ? `<p class="hint">${esc(t('free.dragHint'))}</p>` : ''}
+    <div class="tl" id="timeline">${hours}<div class="tl__track">${blocks}${sessions}</div></div>
+    ${p.sessions.length ? `<ul class="srows">${list}</ul>` : ''}`;
+
+  bindTimeline(date, p);
+}
+
+/** Oturumu taşı (gün içi dakika); sığmıyorsa false */
+function moveSession(date, index, newStart) {
+  const list = state.sessions[date] || [];
+  const x = list[index];
+  if (!x) return false;
+  const candidate = { ...x, start: Math.round(newStart / 5) * 5 };
+  const layout = dayLayout(date, intervalFor, state.settings);
+  if (!fits(layout, list, candidate, index)) return false;
+  commit((s) => { s.sessions[date][index].start = candidate.start; s.sessions[date].sort((a, b) => a.start - b.start); }, { render: false });
+  renderFree();
+  return true;
+}
+
+function removeSession(date, index) {
+  commit((s) => {
+    s.sessions[date].splice(index, 1);
+    if (!s.sessions[date].length) delete s.sessions[date];
+  }, { render: false });
+  renderFree();
+}
+
+/** Sürükleme (pointer) ve klavye (↑ ↓ Delete) */
+function bindTimeline(date) {
+  const track = $('#timeline .tl__track');
+  if (!track) return;
+  const hourPx = () => parseFloat(getComputedStyle($('#timeline')).getPropertyValue('--hour')) || 32;
+
+  track.querySelectorAll('.tl__session').forEach((el) => {
+    const index = +el.dataset.index;
+    const x = state.sessions[date][index];
+    let startY = 0;
+    let delta = 0;
+    let dragging = false;
+
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      startY = e.clientY;
+      delta = 0;
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* sentetik olaylar */ }
+      el.classList.add('is-dragging');
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      // 15 dakikalık adımlara yapış
+      delta = Math.round(((e.clientY - startY) / hourPx()) * 4) * 15;
+      el.style.transform = `translateY(${(delta / 60) * hourPx()}px)`;
+    });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('is-dragging');
+      if (!delta) { el.style.transform = ''; return; }
+      if (!moveSession(date, index, x.start + delta)) {
+        el.style.transform = '';
+        toast(t('free.blocked'));
+      }
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!moveSession(date, index, x.start + (e.key === 'ArrowUp' ? -15 : 15))) toast(t('free.blocked'));
+        $(`#timeline .tl__session[data-id="${x.id}"]`)?.focus();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        removeSession(date, index);
+      }
+    });
+  });
+}
+
+function runPlan() {
+  const dates = weekDates(view.week);
+  const result = plan({ dates, intervalFor, settings: state.settings, goals: state.goals });
+  commit((s) => {
+    dates.forEach((d) => {
+      const list = result.sessions[d].map((x) => ({ id: store.uid(), ...x }));
+      if (list.length) s.sessions[d] = list; else delete s.sessions[d];
+    });
+  }, { render: false });
+  view.planResult = {
+    count: Object.values(result.sessions).reduce((n, l) => n + l.length, 0),
+    unplaced: result.unplaced
+  };
+  renderFree({ animate: true });
+}
+
+function clearPlan() {
+  const dates = weekDates(view.week);
+  commit((s) => { dates.forEach((d) => delete s.sessions[d]); }, { render: false });
+  view.planResult = null;
+  renderFree();
+}
+
+function goalForm(goal) {
+  const isNew = !goal;
+  const x = goal || { id: '', name: '', weeklyHours: 5, minSession: 45, maxSession: 90, color: '#16a37f' };
+  openSheet(t(isNew ? 'goal.new' : 'goal.edit'), `
+    <form class="stack" id="goal-form" novalidate>
+      <div class="field"><label for="g-name">${esc(t('goal.name'))}</label>
+        <input class="input" id="g-name" name="name" required maxlength="40" value="${esc(x.name)}" autocomplete="off"></div>
+      <div class="field"><label for="g-hours">${esc(t('goal.hours'))}</label>
+        <input class="input" id="g-hours" name="weeklyHours" type="number" inputmode="decimal" min="0.5" max="100" step="0.5" value="${x.weeklyHours}"></div>
+      <div class="grid-2">
+        <div class="field"><label for="g-min">${esc(t('goal.min'))}</label>
+          <input class="input" id="g-min" name="minSession" type="number" inputmode="numeric" min="15" max="600" step="5" value="${x.minSession}"></div>
+        <div class="field"><label for="g-max">${esc(t('goal.max'))}</label>
+          <input class="input" id="g-max" name="maxSession" type="number" inputmode="numeric" min="15" max="600" step="5" value="${x.maxSession}"></div>
+      </div>
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label">${esc(t('tpl.color'))}</legend>
+        <div class="swatches">${PALETTE.map((c) => `
+          <label class="swatch"><input type="radio" name="color" value="${c}" ${c === x.color ? 'checked' : ''} aria-label="${c}"><span style="--c:${c}"></span></label>`).join('')}
+        </div>
+      </fieldset>
+      <div class="form-actions">
+        ${isNew ? '' : `<button class="btn btn--ghost btn--danger" type="button" data-del>${esc(t('tpl.delete'))}</button>`}
+        <button class="btn btn--primary" type="submit">${esc(t('tpl.save'))}</button>
+      </div>
+    </form>`, (body) => {
+    const form = body.querySelector('form');
+    const f = form.elements;
+    f.name.focus();
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = f.name.value.trim();
+      if (!name) { f.name.focus(); return; }
+      const minSession = Math.max(15, Math.min(600, +f.minSession.value || 45));
+      const data = {
+        name: name.slice(0, 40),
+        weeklyHours: Math.max(0, Math.min(100, +f.weeklyHours.value || 0)),
+        minSession,
+        maxSession: Math.max(minSession, Math.min(600, +f.maxSession.value || minSession)),
+        color: f.color.value || '#16a37f'
+      };
+      commit((s) => {
+        if (isNew) s.goals.push({ id: store.uid(), ...data });
+        else Object.assign(s.goals.find((g) => g.id === x.id), data);
+      });
+      closeSheet();
+      toast(t('toast.saved'));
+    });
+    body.querySelector('[data-del]')?.addEventListener('click', () => {
+      commit((s) => {
+        s.goals = s.goals.filter((g) => g.id !== x.id);
+        for (const [d, list] of Object.entries(s.sessions)) {
+          s.sessions[d] = list.filter((y) => y.goalId !== x.id);
+          if (!s.sessions[d].length) delete s.sessions[d];
+        }
+      });
+      closeSheet();
+    });
+  });
 }
 
 /* ==========================================================================
@@ -453,6 +792,17 @@ function translateDefaults(from, to) {
   swap(state.goals, store.demoState(from).goals, store.demoState(to).goals);
 }
 
+/** Demo haftası için hedefleri bir kez yerleştir */
+function seedDemoPlan() {
+  const dates = weekDates(today);
+  const result = plan({ dates, intervalFor, settings: state.settings, goals: state.goals });
+  dates.forEach((d) => {
+    const list = result.sessions[d].map((x) => ({ id: store.uid(), ...x }));
+    if (list.length) state.sessions[d] = list;
+  });
+  store.save(state);
+}
+
 function switchTab(tab) {
   view.tab = tab;
   render();
@@ -470,8 +820,8 @@ document.addEventListener('click', async (e) => {
   const action = el.dataset.action;
 
   switch (action) {
-    case 'week-prev': view.week = addDays(view.week, -7); renderWeek(-1); break;
-    case 'week-next': view.week = addDays(view.week, 7); renderWeek(1); break;
+    case 'week-prev': view.week = addDays(view.week, -7); view.planResult = null; view.tab === 'free' ? renderFree() : renderWeek(-1); break;
+    case 'week-next': view.week = addDays(view.week, 7); view.planResult = null; view.tab === 'free' ? renderFree() : renderWeek(1); break;
     case 'week-today': {
       const dir = today < view.week ? -1 : 1;
       view.week = startOfWeek(today);
@@ -484,6 +834,18 @@ document.addEventListener('click', async (e) => {
     case 'goto-templates': closeSheet(); switchTab('settings'); break;
     case 'goto-rate': switchTab('settings'); setTimeout(() => $('#f-rate')?.focus(), 50); break;
     case 'new-template': templateForm(null); break;
+    case 'free-day': view.freeDay = el.dataset.date; renderFree(); $(`[data-action="free-day"][data-date="${view.freeDay}"]`)?.focus(); break;
+    case 'new-goal': goalForm(null); break;
+    case 'edit-goal': goalForm(state.goals.find((g) => g.id === el.dataset.id)); break;
+    case 'plan': runPlan(); break;
+    case 'clear-plan': clearPlan(); break;
+    case 'session-move': {
+      const list = state.sessions[view.freeDay] || [];
+      const x = list[+el.dataset.index];
+      if (x && !moveSession(view.freeDay, +el.dataset.index, x.start + +el.dataset.delta)) toast(t('free.blocked'));
+      break;
+    }
+    case 'session-remove': removeSession(view.freeDay, +el.dataset.index); break;
     case 'edit-template': templateForm(state.templates.find((x) => x.id === el.dataset.id)); break;
 
     case 'export-json':
@@ -493,8 +855,9 @@ document.addEventListener('click', async (e) => {
     case 'load-demo':
       if (!(await ask(t('confirm.demo')))) return;
       state = store.demoState(getLang(), today);
-      store.save(state);
+      seedDemoPlan();
       view.week = startOfWeek(today);
+      view.planResult = null;
       render();
       toast(t('toast.demo'));
       break;
@@ -503,6 +866,7 @@ document.addEventListener('click', async (e) => {
       state = store.emptyState(getLang());
       store.save(state);
       view.week = startOfWeek(today);
+      view.planResult = null;
       render();
       toast(t('toast.reset'));
       break;
@@ -534,4 +898,5 @@ $('#theme-btn').addEventListener('click', () => {
 
 setLang(state.settings.lang);
 applyTheme();
+if (firstRunPlan) seedDemoPlan();
 render();

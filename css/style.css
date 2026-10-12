@@ -329,6 +329,68 @@ main:focus { outline: none; }
 .k-free { background: var(--tl-free); border: 1px solid var(--tl-free-line); }
 .k-session { background: #16a37f; }
 
+/* Boş zaman görünümü */
+.weeknav--compact { margin: 0 0 14px; }
+.weeknav--compact h3 { font-size: 16px; font-weight: 700; }
+.card__row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.card__big { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+.card__muted { font-size: 14px; color: var(--muted); font-weight: 600; }
+
+.fdays { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fday {
+  display: grid; grid-template-columns: 1fr auto; row-gap: 6px; align-items: center;
+  width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface); text-align: left;
+}
+.fday.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.fday.is-today .fday__label b { color: var(--accent); }
+.fday__label { font-size: 14px; color: var(--muted); }
+.fday__label b { color: var(--ink); }
+.fday__free { font-size: 13px; font-weight: 700; color: var(--ok); }
+.fbar { grid-column: 1 / -1; position: relative; height: 14px; border-radius: 5px; overflow: hidden; background: var(--surface-2); }
+.seg { position: absolute; top: 0; bottom: 0; }
+.seg--free { background: var(--tl-free); }
+.seg--sleep { background: var(--tl-sleep); }
+.seg--buffer { background: var(--tl-buffer); }
+.seg--shift { background: var(--c, var(--accent)); }
+.seg--session { background: var(--c); top: 3px; bottom: 3px; border-radius: 3px; box-shadow: 0 0 0 1.5px var(--surface); }
+
+.plan-actions { display: flex; gap: 10px; margin-top: 12px; }
+.plan-actions .btn--primary { flex: 1; }
+.plan-result { margin-top: 12px; padding: 12px 14px; border-radius: 12px; font-size: 14px; display: grid; gap: 4px; }
+.plan-result--ok { background: var(--tl-free); color: var(--ink); }
+.plan-result--warn { background: var(--warn-bg); color: var(--warn-ink); }
+
+/* Dikey zaman çizelgesi */
+.tl { --hour: 30px; position: relative; height: calc(24 * var(--hour)); margin: 12px 0 4px 44px; }
+.tl__hour { position: absolute; left: -44px; transform: translateY(-50%); font-size: 11px; color: var(--muted); width: 38px; text-align: right; }
+.tl__track { position: absolute; inset: 0; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.tl__track::after { /* saat çizgileri */
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--ink) 10%, transparent) 0 1px, transparent 1px var(--hour));
+}
+.tl__block { position: absolute; left: 0; right: 0; display: flex; align-items: flex-start; padding: 4px 8px; font-size: 12px; font-style: normal; font-weight: 600; overflow: hidden; }
+.tl__block--free { background: var(--tl-free); border-top: 1px solid var(--tl-free-line); border-bottom: 1px solid var(--tl-free-line); }
+.tl__block--sleep { background: var(--tl-sleep); color: var(--muted); }
+.tl__block--buffer { background: var(--tl-buffer); }
+.tl__block--shift { background: var(--c); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.tl__session {
+  position: absolute; left: 16%; right: 6%; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center; gap: 0; padding: 2px 10px;
+  border: 0; border-radius: 8px; background: var(--c); color: #fff; text-align: left;
+  font-size: 12px; line-height: 1.25; touch-action: none; cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+.tl__session b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl__session.is-dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); z-index: 3; }
+.tl__session:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
+
+.srows { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
+.srow { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 10px; border-radius: 12px; border: 1px solid var(--line); }
+.srow__main { flex: 1; min-width: 0; }
+.srow__main b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow__main small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* ---------- Hareket azaltma ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
