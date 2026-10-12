@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nöbetçi — Vardiya & Mesai Planlayıcı</title>
+  <meta name="description" content="Vardiyalı çalışanlar için mesai planlayıcı: haftalık vardiya, net saat, fazla mesai ve gece saatleri; uyku ve yol süresine göre gerçek boş zamanını bul, hedeflerini yerleştir.">
+  <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://nobetci.egementuncer.dev/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Nöbetçi">
+  <meta property="og:title" content="Nöbetçi — Vardiya & Mesai Planlayıcı">
+  <meta property="og:description" content="Vardiyanı gir; net mesaini, fazla mesaini ve gerçekten kullanabileceğin boş zamanını gör.">
+  <meta property="og:url" content="https://nobetci.egementuncer.dev/">
+  <meta property="og:image" content="https://nobetci.egementuncer.dev/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="tr_TR">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Tema boyanmadan önce uygulanır (yanıp sönme olmasın) -->
+  <script>
+    try {
+      var s = JSON.parse(localStorage.getItem('nobetci:v1') || '{}').settings || {};
+      if (s.theme === 'light' || s.theme === 'dark') document.documentElement.dataset.theme = s.theme;
+      if (s.lang === 'en') document.documentElement.lang = 'en';
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skip">İçeriğe geç</a>
+
+  <header class="topbar">
+    <h1 class="brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect x="3" y="5" width="26" height="24" rx="6"/><path d="M3 12h26M10 3v5M22 3v5"/><path class="brand__moon" d="M18.5 16.5a4.5 4.5 0 1 0 2 6.6 3.6 3.6 0 0 1-2-6.6z"/></svg>
+      <span>Nöbetçi</span>
+      <span class="brand__tag" data-i18n="app.tagline">Vardiya & Mesai Planlayıcı</span>
+    </h1>
+    <div class="topbar__actions">
+      <button class="icon-btn" type="button" id="lang-btn" data-i18n-aria="lang.toggle" aria-label="Switch to English"><span class="lang-code">EN</span></button>
+      <button class="icon-btn" type="button" id="theme-btn" aria-label="Koyu temaya geç">
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div class="demo-bar" id="demo-bar" hidden>
+      <p data-i18n="demo.text">Örnek bir haftayla açıldı. Kendi vardiyalarını girmek için sıfırla.</p>
+      <button class="btn btn--small" type="button" data-action="reset" data-i18n="demo.reset">Sıfırla</button>
+    </div>
+    <p class="storage-warning" id="storage-warning" hidden data-i18n="set.storageOff"></p>
+
+    <!-- ========== HAFTA ========== -->
+    <section class="view" id="view-week" aria-labelledby="week-title">
+      <div class="weeknav">
+        <button class="icon-btn icon-btn--lg" type="button" data-action="week-prev" data-i18n-aria="week.prev" aria-label="Önceki hafta">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="weeknav__title">
+          <h2 id="week-title">—</h2>
+          <button class="link-btn" type="button" data-action="week-today" data-i18n="week.today" hidden>Bugün</button>
+        </div>
+        <button class="icon-btn icon-btn--lg" type="button" data-action="week-next" data-i18n-aria="week.next" aria-label="Sonraki hafta">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <div class="stats" id="week-stats" aria-live="polite"></div>
+
+      <p class="hint" data-i18n="week.tapHint">Bir güne dokun, vardiyasını seç.</p>
+      <ol class="days" id="days"></ol>
+
+      <div class="row-actions">
+        <button class="btn btn--ghost" type="button" data-action="copy-prev" data-i18n="week.copyPrev">Geçen haftayı kopyala</button>
+      </div>
+
+      <div class="card month" id="month-card"></div>
+
+      <div class="export-actions">
+        <button class="btn" type="button" data-action="export-ics">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          <span data-i18n="act.ics">Takvime aktar</span>
+        </button>
+        <button class="btn" type="button" data-action="export-png">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>
+          <span data-i18n="act.png">Görsel olarak indir</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== BOŞ ZAMAN ========== -->
+    <section class="view" id="view-free" aria-labelledby="free-title" hidden>
+      <h2 id="free-title" class="view__title" data-i18n="free.title">Boş zaman bulucu</h2>
+      <p class="view__intro" data-i18n="free.intro"></p>
+      <div id="free-root"></div>
+    </section>
+
+    <!-- ========== AYARLAR ========== -->
+    <section class="view" id="view-settings" aria-labelledby="settings-title" hidden>
+      <h2 id="settings-title" class="view__title" data-i18n="tab.settings">Ayarlar</h2>
+      <div id="settings-root"></div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Ana menü" data-i18n-aria="nav.main">
+    <button type="button" class="tab" data-tab="week" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M7 14h3M12 14h5M7 17h6"/></svg>
+      <span data-i18n="tab.week">Hafta</span>
+    </button>
+    <button type="button" class="tab" data-tab="free">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span data-i18n="tab.free">Boş zaman</span>
+    </button>
+    <button type="button" class="tab" data-tab="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      <span data-i18n="tab.settings">Ayarlar</span>
+    </button>
+  </nav>
+
+  <!-- Alttan açılan panel (vardiya seçimi, şablon/hedef formu, onay) -->
+  <dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+    <div class="sheet__inner">
+      <div class="sheet__head">
+        <h2 class="sheet__title" id="sheet-title"></h2>
+        <button class="icon-btn" type="button" data-action="sheet-close" aria-label="Kapat" data-i18n-aria="sheet.close">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet__body" id="sheet-body"></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</body>
+</html>
