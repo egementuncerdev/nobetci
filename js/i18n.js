@@ -6,7 +6,7 @@ const STRINGS = {
   tr: {
     'app.tagline': 'Vardiya & Mesai Planlayıcı',
     'skip': 'İçeriğe geç',
-    'lang.toggle': 'Switch to English',
+    'lang.toggle': 'EN — Switch to English',
     'theme.toLight': 'Açık temaya geç',
     'theme.toDark': 'Koyu temaya geç',
 
@@ -24,7 +24,7 @@ const STRINGS = {
     'week.copied': 'Geçen haftanın vardiyaları kopyalandı',
     'week.empty': 'Boş',
     'week.tapHint': 'Bir güne dokun, vardiyasını seç.',
-    'week.dayAria': '{day}: {shift}. Değiştir',
+    'week.change': 'değiştir',
 
     'sum.net': 'Net mesai',
     'sum.gross': 'brüt {v}',
@@ -77,7 +77,7 @@ const STRINGS = {
     'tpl.delete': 'Sil',
     'tpl.cancel': 'Vazgeç',
     'tpl.deleteAsk': '“{name}” şablonu {n} günde kullanılıyor. Silinirse o günler boş kalır.',
-    'tpl.editAria': '{name} şablonunu düzenle',
+    'tpl.editHint': 'düzenle',
 
     'free.title': 'Boş zaman bulucu',
     'free.intro': 'Uyku ve yol süreni gir; vardiyalar dışında gerçekten kullanabileceğin zamanı gör ve hedeflerini yerleştir.',
@@ -103,7 +103,7 @@ const STRINGS = {
     'free.legend.free': 'Boş',
     'free.legend.session': 'Oturum',
     'free.dayFree': '{v} boş',
-    'free.sessionAria': '{goal}, {start}–{end}. Taşımak için sürükle ya da ok tuşlarını kullan; silmek için Delete.',
+    'free.sessionHelp': 'Taşımak için sürükle ya da yukarı/aşağı ok tuşlarını kullan; silmek için Delete.',
     'free.moveEarlier': '15 dk erkene al',
     'free.moveLater': '15 dk geçe al',
     'free.remove': 'Oturumu sil',
@@ -142,7 +142,7 @@ const STRINGS = {
   en: {
     'app.tagline': 'Shift & Hours Planner',
     'skip': 'Skip to content',
-    'lang.toggle': 'Türkçeye geç',
+    'lang.toggle': 'TR — Türkçeye geç',
     'theme.toLight': 'Switch to light theme',
     'theme.toDark': 'Switch to dark theme',
 
@@ -160,7 +160,7 @@ const STRINGS = {
     'week.copied': 'Copied last week’s shifts',
     'week.empty': 'Empty',
     'week.tapHint': 'Tap a day to choose its shift.',
-    'week.dayAria': '{day}: {shift}. Change',
+    'week.change': 'change',
 
     'sum.net': 'Net hours',
     'sum.gross': 'gross {v}',
@@ -213,7 +213,7 @@ const STRINGS = {
     'tpl.delete': 'Delete',
     'tpl.cancel': 'Cancel',
     'tpl.deleteAsk': '“{name}” is used on {n} days. Those days will be left empty.',
-    'tpl.editAria': 'Edit template {name}',
+    'tpl.editHint': 'edit',
 
     'free.title': 'Free time finder',
     'free.intro': 'Enter your sleep and commute; see the time you can really use around your shifts and fit your goals into it.',
@@ -239,7 +239,7 @@ const STRINGS = {
     'free.legend.free': 'Free',
     'free.legend.session': 'Session',
     'free.dayFree': '{v} free',
-    'free.sessionAria': '{goal}, {start}–{end}. Drag or use arrow keys to move; Delete to remove.',
+    'free.sessionHelp': 'Drag or use the up/down arrow keys to move; press Delete to remove.',
     'free.moveEarlier': 'Move 15 min earlier',
     'free.moveLater': 'Move 15 min later',
     'free.remove': 'Remove session',

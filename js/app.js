@@ -173,18 +173,17 @@ function renderWeek(direction = 0) {
   // Günler
   $('#days').innerHTML = sum.days.map((d) => {
     const tpl = tplFor(d.date);
-    const label = tpl ? (tpl.off ? tpl.name : `${tpl.name} ${timeRange(tpl)}`) : t('week.empty');
     const shift = tpl
       ? `<span class="day__shift" style="--c:${tpl.color}"><i class="dot"></i><span>${esc(tpl.name)}${tpl.off ? '' : `<small>${esc(timeRange(tpl))}</small>`}</span></span>`
       : `<span class="day__shift day__shift--empty"><i class="dot"></i><span>${esc(t('week.empty'))}</span></span>`;
     return `
       <li class="day ${d.date === today ? 'day--today' : ''}">
-        <button class="day__btn" type="button" data-action="pick" data-date="${d.date}"
-          aria-label="${esc(t('week.dayAria', { day: `${dayName(d.date)} ${fmtDayMonth(d.date)}`, shift: label }))}">
-          <span class="day__date"><b>${esc(dayName(d.date, 'short'))}</b><small>${esc(fmtDayMonth(d.date))}</small></span>
+        <button class="day__btn" type="button" data-action="pick" data-date="${d.date}">
+          <span class="day__date"><b><abbr title="${esc(dayName(d.date))}">${esc(dayName(d.date, 'short'))}</abbr></b><small>${esc(fmtDayMonth(d.date))}</small></span>
           ${shift}
           <span class="day__hours">${d.net ? esc(fmtHours(d.net)) : ''}${d.overtime ? `<small>+${esc(fmtHours(d.overtime))}</small>` : ''}</span>
           ${dayBar(d.date)}
+          <span class="sr-only">, ${esc(t('week.change'))}</span>
         </button>
       </li>`;
   }).join('');
@@ -253,10 +252,11 @@ function renderSettings() {
   $('#settings-root').innerHTML = `
     <h3 class="section-title">${esc(t('set.templates'))}</h3>
     <ul class="list">${state.templates.map((tpl) => `
-      <li><button class="list__item" type="button" data-action="edit-template" data-id="${esc(tpl.id)}" aria-label="${esc(t('tpl.editAria', { name: tpl.name }))}">
+      <li><button class="list__item" type="button" data-action="edit-template" data-id="${esc(tpl.id)}">
         <i class="dot" style="--c:${tpl.color}"></i>
         <span class="list__main"><b>${esc(tpl.name)}</b>
           <small>${tpl.off ? esc(t('tpl.off')) : esc(`${timeRange(tpl)} · ${t('tpl.breakShort', { v: tpl.breakMin })} · net ${fmtDuration(netMinutes(tpl))}`)}</small></span>
+        <span class="sr-only">, ${esc(t('tpl.editHint'))}</span>
         ${chevron}
       </button></li>`).join('')}
     </ul>
@@ -482,8 +482,8 @@ function renderFree({ animate = false } = {}) {
     const freeTxt = t('free.dayFree', { v: fmtHours(freeMinutes(p.layout)) });
     return `
       <li><button type="button" class="fday ${d === view.freeDay ? 'is-active' : ''} ${d === today ? 'is-today' : ''}" data-action="free-day" data-date="${d}"
-        aria-pressed="${d === view.freeDay}" aria-label="${esc(`${dayName(d)} ${fmtDayMonth(d)}: ${freeTxt}`)}">
-        <span class="fday__label"><b>${esc(dayName(d, 'short'))}</b> ${esc(fmtDayMonth(d))}</span>
+        aria-pressed="${d === view.freeDay}">
+        <span class="fday__label"><b><abbr title="${esc(dayName(d))}">${esc(dayName(d, 'short'))}</abbr></b> ${esc(fmtDayMonth(d))}</span>
         <span class="fday__free">${esc(freeTxt)}</span>
         <span class="fbar" aria-hidden="true">${segs(p)}</span>
       </button></li>`;
@@ -494,6 +494,7 @@ function renderFree({ animate = false } = {}) {
       <i class="dot" style="--c:${g.color}"></i>
       <span class="list__main"><b>${esc(g.name)}</b>
         <small>${esc(t('free.goalLine', { h: fmtHours(g.weeklyHours * 60), min: g.minSession, max: g.maxSession }))}</small></span>
+      <span class="sr-only">, ${esc(t('tpl.editHint'))}</span>
       ${chevron}
     </button></li>`).join('');
 
@@ -571,7 +572,7 @@ function renderDayDetail(p) {
     const g = goals.get(x.goalId);
     const range = `${toHHMM(x.start)}–${toHHMM(x.start + x.duration)}`;
     return `<button type="button" class="tl__session" data-index="${i}" data-id="${esc(x.id)}" style="top:${top(x.start)};height:${top(x.duration)};--c:${g?.color || '#16a37f'}"
-      aria-label="${esc(t('free.sessionAria', { goal: g?.name || '', start: toHHMM(x.start), end: toHHMM(x.start + x.duration) }))}">
+      aria-describedby="session-help">
       <b>${esc(g?.name || '')}</b><span>${range}</span></button>`;
   }).join('');
 
@@ -592,6 +593,7 @@ function renderDayDetail(p) {
       <span class="card__muted">${esc(t('free.dayFree', { v: fmtHours(freeMinutes(p.layout)) }))}</span>
     </div>
     ${p.sessions.length ? `<p class="hint">${esc(t('free.dragHint'))}</p>` : ''}
+    <p class="sr-only" id="session-help">${esc(t('free.sessionHelp'))}</p>
     <div class="tl" id="timeline">${hours}<div class="tl__track">${blocks}${sessions}</div></div>
     ${p.sessions.length ? `<ul class="srows">${list}</ul>` : ''}`;
 
@@ -950,3 +952,4 @@ setLang(state.settings.lang);
 applyTheme();
 if (firstRunPlan) seedDemoPlan();
 render();
+document.documentElement.classList.add('is-ready');

@@ -17,7 +17,7 @@
   --accent-ink: #ffffff;
   --accent-soft: #e6ecfb;
   --danger: #c92a2a;
-  --ok: #1f7a4d;
+  --ok: #17683f;
   --warn-bg: #fff4d6;
   --warn-ink: #6b4a00;
 
@@ -113,6 +113,9 @@ svg { display: block; }
 .skip-link:focus { transform: none; }
 
 main { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+/* İlk çizim JS ile yapılır; o ana kadar içerik gizli (sonradan dolup kayma olmasın) */
+.js:not(.is-ready) main { visibility: hidden; }
+.noscript { max-width: 640px; margin: 16px auto; padding: 12px 16px; border-radius: 12px; background: var(--warn-bg); color: var(--warn-ink); }
 main:focus { outline: none; }
 
 /* ---------- Üst çubuk ---------- */
@@ -190,7 +193,7 @@ main:focus { outline: none; }
 .hint { font-size: 13px; color: var(--muted); margin: 0 4px 8px; }
 
 /* ---------- Günler ---------- */
-.days { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.days { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .day__btn {
   display: grid; grid-template-columns: 52px 1fr auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 8px; align-items: center;
   width: 100%; min-height: 72px; padding: 12px 14px; border-radius: var(--radius);
@@ -200,6 +203,7 @@ main:focus { outline: none; }
 .day--today .day__btn { border-color: var(--accent); }
 .day__date { display: flex; flex-direction: column; line-height: 1.15; }
 .day__date b { font-size: 15px; }
+abbr[title] { text-decoration: none; }
 .day__date small { font-size: 13px; color: var(--muted); }
 .day--today .day__date b { color: var(--accent); }
 .day__shift { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 650; }
@@ -255,7 +259,7 @@ main:focus { outline: none; }
 .form-actions .btn--primary { flex: 1; }
 
 /* ---------- Ayarlar listeleri ---------- */
-.list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .list__item {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px;
   border-radius: 12px; border: 1px solid var(--line); background: var(--surface); text-align: left;
@@ -299,7 +303,7 @@ main:focus { outline: none; }
 .sheet__inner { padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); }
 .sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 10px; }
 .sheet__title { font-size: 18px; font-weight: 750; }
-.picker { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.picker { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .picker button {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px;
   border-radius: 12px; border: 1px solid var(--line); background: var(--surface); text-align: left; font-weight: 650;
@@ -336,7 +340,7 @@ main:focus { outline: none; }
 .card__big { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
 .card__muted { font-size: 14px; color: var(--muted); font-weight: 600; }
 
-.fdays { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fdays { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .fday {
   display: grid; grid-template-columns: 1fr auto; row-gap: 6px; align-items: center;
   width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 12px;
@@ -385,7 +389,7 @@ main:focus { outline: none; }
 .tl__session.is-dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); z-index: 3; }
 .tl__session:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
 
-.srows { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
+.srows { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .srow { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 10px; border-radius: 12px; border: 1px solid var(--line); }
 .srow__main { flex: 1; min-width: 0; }
 .srow__main b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
