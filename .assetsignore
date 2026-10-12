@@ -1,0 +1,13 @@
+# Yayına çıkmayacak dosyalar (repo kökü statik klasör olarak yükleniyor)
+.git
+.gitignore
+.assetsignore
+.claude
+.DS_Store
+.wrangler
+node_modules
+wrangler.jsonc
+package.json
+README.md
+docs
+tests/run-node.mjs

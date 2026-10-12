@@ -1,0 +1,10 @@
+// Cloudflare Workers (statik dosya) yapılandırması — deploy komutu: npx wrangler deploy
+{
+  "name": "nobetci",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}
