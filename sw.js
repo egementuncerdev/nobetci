@@ -7,7 +7,7 @@
    VERSION değişince eski önbellekler silinir.
    ========================================================================== */
 
-const VERSION = 'nobetci-v1';
+const VERSION = 'nobetci-v2';
 const SHELL = [
   '/',
   '/css/style.css',

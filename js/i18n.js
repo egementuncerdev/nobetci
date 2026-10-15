@@ -16,6 +16,7 @@ const STRINGS = {
 
     'demo.text': 'Örnek bir haftayla açıldı. Kendi vardiyalarını girmek için sıfırla.',
     'demo.reset': 'Sıfırla',
+    'credit.by': 'Tasarım ve geliştirme:',
 
     'week.prev': 'Önceki hafta',
     'week.next': 'Sonraki hafta',
@@ -152,6 +153,7 @@ const STRINGS = {
 
     'demo.text': 'Opened with a sample week. Reset to enter your own shifts.',
     'demo.reset': 'Reset',
+    'credit.by': 'Design and development:',
 
     'week.prev': 'Previous week',
     'week.next': 'Next week',
